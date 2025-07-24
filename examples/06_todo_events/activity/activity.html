@@ -1,0 +1,13 @@
+{{< layout}}
+  {{$body}}
+    {{^activity}}
+      <p>no activity</p>
+    {{/activity}}
+    {{#activity}}
+      <p>activity</p>
+      {{#.}}
+        <p>{{action}}: {{title}} ({{created_at}})</p>
+      {{/.}}
+    {{/activity}}
+  {{/body}}
+{{/layout}}

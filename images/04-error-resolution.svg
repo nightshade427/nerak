@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 320" width="760" height="320">
+  <rect width="760" height="320" fill="#09080f"/>
+  <defs>
+    <style>text{font-family:'JetBrains Mono','Fira Code',monospace}</style>
+  </defs>
+
+  <!-- Level 1: Root Config — y=24 h=60 → bottom 84 -->
+  <rect x="40" y="24" width="680" height="60" rx="10" fill="#2d2640" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="380" y="50" text-anchor="middle" fill="#c084fc" font-size="12" font-weight="700">Root Config</text>
+  <text x="380" y="70" text-anchor="middle" fill="#94a3b8" font-size="10">.errors = { 404 → render 404.html }</text>
+
+  <!-- Gap: 84 → 118 (34px gap) -->
+
+  <!-- Level 2: Module Config — y=118 h=60 → bottom 178 -->
+  <rect x="120" y="118" width="520" height="60" rx="10" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="380" y="144" text-anchor="middle" fill="#60a5fa" font-size="12" font-weight="700">Module Config</text>
+  <text x="380" y="164" text-anchor="middle" fill="#94a3b8" font-size="10">.errors = { ... }</text>
+
+  <!-- Gap: 178 → 212 (34px gap) -->
+
+  <!-- Level 3: Route — y=212 h=60 → bottom 272 -->
+  <rect x="200" y="212" width="360" height="60" rx="10" fill="#0c2d3e" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="380" y="238" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="700">Route /todos/:id</text>
+  <text x="380" y="258" text-anchor="middle" fill="#94a3b8" font-size="10">.errors = { ... }</text>
+
+  <!-- Error origin dot: y=296 -->
+  <circle cx="380" cy="296" r="10" fill="#ef4444" opacity="0.85"/>
+  <text x="380" y="300" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">!</text>
+  <text x="400" y="300" fill="#fca5a5" font-size="10">  404 raised in pipeline step</text>
+
+  <!-- Arrow 1: error dot (286) → route bottom (272). Line + up triangle -->
+  <line x1="380" y1="286" x2="380" y2="275" stroke="#ef4444" stroke-width="2"/>
+  <polygon points="380,272 375,279 385,279" fill="#ef4444"/>
+
+  <!-- Arrow 2: route top (212) → module bottom (178). Line in gap + up triangle -->
+  <line x1="380" y1="212" x2="380" y2="181" stroke="#ef4444" stroke-width="2"/>
+  <polygon points="380,178 375,185 385,185" fill="#ef4444"/>
+  <!-- Label -->
+  <text x="400" y="200" fill="#6b7280" font-size="9">no 404 handler → bubble up</text>
+
+  <!-- Arrow 3: module top (118) → root bottom (84). Line in gap + up triangle -->
+  <line x1="380" y1="118" x2="380" y2="87" stroke="#ef4444" stroke-width="2"/>
+  <polygon points="380,84 375,91 385,91" fill="#ef4444"/>
+  <!-- Label -->
+  <text x="400" y="106" fill="#22c55e" font-size="9" font-weight="600">✓ matched → render 404.html</text>
+</svg>

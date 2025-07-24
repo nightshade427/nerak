@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" width="900" height="300">
+  <rect width="900" height="300" fill="#09080f"/>
+  <defs>
+    <linearGradient id="pubG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="subG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="busG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <style>text{font-family:'JetBrains Mono','Fira Code',monospace}</style>
+  </defs>
+
+  <!-- ===== Publisher: todos module ===== -->
+  <rect x="30" y="30" width="220" height="130" rx="12" fill="#1e1b2e" stroke="#f59e0b" stroke-width="1.5"/>
+  <rect x="30" y="30" width="220" height="36" rx="12" fill="url(#pubG)"/>
+  <text x="140" y="53" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">todos module</text>
+  <text x="50" y="86" fill="#fcd34d" font-size="10">.post pipeline:</text>
+  <text x="58" y="102" fill="#e2e8f0" font-size="10">param() → db()</text>
+  <text x="58" y="118" fill="#e2e8f0" font-size="10">→ emit("todo_created")</text>
+  <text x="58" y="134" fill="#e2e8f0" font-size="10">→ redirect("/todos")</text>
+
+  <!-- .publishes contract -->
+  <text x="140" y="175" text-anchor="middle" fill="#92400e" font-size="9" font-weight="600">.publishes</text>
+  <rect x="40" y="182" width="200" height="28" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="0.75"/>
+  <text x="140" y="201" text-anchor="middle" fill="#fcd34d" font-size="9">todo_created → user_id, title</text>
+
+  <!-- ===== Event Bus pill ===== -->
+  <rect x="330" y="118" width="140" height="44" rx="22" fill="url(#busG)"/>
+  <text x="400" y="145" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Event Bus</text>
+
+  <!-- Arrow: publisher → bus -->
+  <line x1="250" y1="140" x2="320" y2="140" stroke="#f59e0b" stroke-width="2"/>
+  <polygon points="330,140 320,135 320,145" fill="#f59e0b"/>
+
+  <!-- ===== Subscriber 1: activity module ===== -->
+  <rect x="570" y="20" width="300" height="100" rx="12" fill="#1e1b2e" stroke="#06b6d4" stroke-width="1.5"/>
+  <rect x="570" y="20" width="300" height="36" rx="12" fill="url(#subG)"/>
+  <text x="720" y="43" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">activity module</text>
+  <text x="595" y="74" fill="#67e8f9" font-size="10">.events:</text>
+  <text x="603" y="92" fill="#e2e8f0" font-size="9">"todo_created" → db(log.sql)</text>
+
+  <!-- Elbow: bus right → subscriber 1 -->
+  <path d="M470,140 L525,140 L525,70 L560,70" stroke="#06b6d4" stroke-width="1.5" fill="none"/>
+  <polygon points="570,70 560,65 560,75" fill="#06b6d4"/>
+
+  <!-- ===== Subscriber 2: notifications module ===== -->
+  <rect x="570" y="160" width="300" height="100" rx="12" fill="#1e1b2e" stroke="#06b6d4" stroke-width="1.5"/>
+  <rect x="570" y="160" width="300" height="36" rx="12" fill="url(#subG)"/>
+  <text x="720" y="183" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">notifications module</text>
+  <text x="595" y="214" fill="#67e8f9" font-size="10">.events:</text>
+  <text x="603" y="232" fill="#e2e8f0" font-size="9">"todo_created" → call(notify)</text>
+
+  <!-- Elbow: bus right → subscriber 2 -->
+  <path d="M470,140 L525,140 L525,210 L560,210" stroke="#06b6d4" stroke-width="1.5" fill="none"/>
+  <polygon points="570,210 560,205 560,215" fill="#06b6d4"/>
+
+  <!-- Footer -->
+  <text x="450" y="290" text-anchor="middle" fill="#64748b" font-size="10">Modules are decoupled — publishers don't know about subscribers</text>
+</svg>
