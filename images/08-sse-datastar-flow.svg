@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="760" height="400">
+  <rect width="760" height="400" fill="#09080f"/>
+  <defs>
+    <linearGradient id="clientG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="serverG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="chanG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <style>text{font-family:'JetBrains Mono','Fira Code',monospace}</style>
+  </defs>
+
+  <text x="380" y="28" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="700">SSE / Datastar — Real-Time Push</text>
+
+  <!-- ===== Left: Client A (subscriber) ===== -->
+  <rect x="30" y="50" width="180" height="80" rx="10" fill="#1e1b2e" stroke="#06b6d4" stroke-width="1.5"/>
+  <rect x="30" y="50" width="180" height="32" rx="10" fill="url(#clientG)"/>
+  <text x="120" y="71" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Client A</text>
+  <text x="50" y="100" fill="#67e8f9" font-size="9">GET /todos</text>
+  <text x="50" y="114" fill="#67e8f9" font-size="9">.sse channel connected</text>
+
+  <!-- ===== Left: Client B (subscriber) ===== -->
+  <rect x="30" y="150" width="180" height="80" rx="10" fill="#1e1b2e" stroke="#06b6d4" stroke-width="1.5"/>
+  <rect x="30" y="150" width="180" height="32" rx="10" fill="url(#clientG)"/>
+  <text x="120" y="171" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Client B</text>
+  <text x="50" y="200" fill="#67e8f9" font-size="9">GET /todos</text>
+  <text x="50" y="214" fill="#67e8f9" font-size="9">.sse channel connected</text>
+
+  <!-- ===== Channel pill ===== -->
+  <rect x="280" y="110" width="200" height="44" rx="22" fill="url(#chanG)"/>
+  <text x="380" y="128" text-anchor="middle" fill="#1e1b2e" font-size="10" font-weight="700">Channel</text>
+  <text x="380" y="143" text-anchor="middle" fill="#78350f" font-size="9">todos/{{user_id}}</text>
+
+  <!-- Arrows: clients → channel (subscribe) -->
+  <line x1="210" y1="90" x2="270" y2="132" stroke="#06b6d4" stroke-width="1.5"/>
+  <polygon points="280,132 270,127 268,137" fill="#06b6d4"/>
+  <line x1="210" y1="190" x2="270" y2="132" stroke="#06b6d4" stroke-width="1.5"/>
+  <polygon points="280,132 270,127 268,137" fill="#06b6d4"/>
+
+  <text x="220" y="86" fill="#475569" font-size="8">subscribe</text>
+  <text x="220" y="198" fill="#475569" font-size="8">subscribe</text>
+
+  <!-- ===== Right: Server pipeline (POST) ===== -->
+  <rect x="30" y="270" width="700" height="110" rx="12" fill="#0f0d1a" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="50" y="296" fill="#c084fc" font-size="11" font-weight="700">POST /todos — another client submits a form</text>
+
+  <!-- Pipeline steps -->
+  <rect x="50" y="310" width="90" height="32" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="0.75"/>
+  <text x="95" y="330" text-anchor="middle" fill="#93c5fd" font-size="9">param()</text>
+
+  <line x1="140" y1="326" x2="155" y2="326" stroke="#64748b" stroke-width="1"/>
+  <polygon points="163,326 155,322 155,330" fill="#64748b"/>
+
+  <rect x="163" y="310" width="90" height="32" rx="6" fill="#1e293b" stroke="#8b5cf6" stroke-width="0.75"/>
+  <text x="208" y="330" text-anchor="middle" fill="#c4b5fd" font-size="9">db()</text>
+
+  <line x1="253" y1="326" x2="268" y2="326" stroke="#64748b" stroke-width="1"/>
+  <polygon points="276,326 268,322 268,330" fill="#64748b"/>
+
+  <!-- datastar / sse step highlighted -->
+  <rect x="276" y="306" width="180" height="40" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="366" y="324" text-anchor="middle" fill="#fcd34d" font-size="10" font-weight="700">datastar() / sse()</text>
+  <text x="366" y="339" text-anchor="middle" fill="#fbbf24" font-size="8">.channel = "todos/{{user_id}}"</text>
+
+  <!-- Arrow from datastar step up to channel -->
+  <path d="M366,306 L366,280 L380,280 L380,162" stroke="#f59e0b" stroke-width="2" fill="none"/>
+  <polygon points="380,154 375,162 385,162" fill="#f59e0b"/>
+
+  <text x="394" y="230" fill="#f59e0b" font-size="9" font-weight="600">push to channel</text>
+
+  <!-- Arrows: channel → clients (broadcast) -->
+  <line x1="280" y1="125" x2="218" y2="94" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="210,90 218,89 216,99" fill="#f59e0b"/>
+
+  <line x1="280" y1="140" x2="218" y2="186" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="210,190 218,181 216,191" fill="#f59e0b"/>
+
+  <text x="222" y="110" fill="#92400e" font-size="8">broadcast</text>
+  <text x="222" y="180" fill="#92400e" font-size="8">broadcast</text>
+
+  <!-- Datastar DOM update note -->
+  <rect x="530" y="100" width="200" height="64" rx="8" fill="#111827" stroke="#1f2937" stroke-width="1"/>
+  <text x="550" y="120" fill="#6b7280" font-size="9" font-weight="600">DATASTAR MODE</text>
+  <text x="550" y="136" fill="#94a3b8" font-size="9">.target = "todos"</text>
+  <text x="550" y="152" fill="#94a3b8" font-size="9">.mode = mode_prepend</text>
+
+  <!-- Footer -->
+  <text x="380" y="396" text-anchor="middle" fill="#64748b" font-size="10">Without .channel, events push directly to the requesting client</text>
+</svg>

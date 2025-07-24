@@ -1,0 +1,430 @@
+# Nerak — Full API Reference for LLMs
+
+> Nerak is a declarative C23 web framework for building asynchronous web applications. An app is a data transformation expressed as pipelines: ordered arrays of steps that turn a request into a response. This file is self-contained: it has the syntax, signatures, constants, and conventions needed to write working Nerak code without following links.
+
+## Core Model
+
+- `config(name){ ... }` is a constructor that runs ONCE at boot and declares an app or module (registers resources, databases, tasks, subscribers, middleware). The root is `config(main)` in `main.c`.
+- A **module** is a folder with a matching `<folder>.c` file containing `config(<folder>){ ... }` (e.g. `todos/todos.c` → `config(todos)`). Compose modules by `#include`ing their `.c` file from `main.c`; the include is all that is needed.
+- A **pipeline** is an ordered array of steps. For each request, Nerak runs: the resource's `.all` steps → the owning module's `middleware()` → the matched verb pipeline.
+- **Context** is a scoped key/value store living for one request. Every step reads inputs from context and writes outputs back. Three scopes: `input:xxx` (raw request params), `error:xxx` (validation/error data), and unprefixed names (app scope: validated inputs, query results, computed values). `input()` promotes values from `input:` to app scope.
+- **Everything is a string.** Context values are strings (scalars) or tables (query/fetch results). Interpolate strings into SQL, templates, URLs, headers, etc. with `{{context_key}}`. No dot notation in templates: use `{{#a}}{{b}}{{/a}}`, not `{{a.b}}`.
+
+Minimal app:
+```c
+#include <nerak.h>
+
+config(main){
+  context("hello", "<h1>Hello, world!</h1>"); // register a named template inline
+  resource("home", "/", .get = {respond("hello")});
+}
+```
+
+## Assets (file → context naming)
+
+Every non-`.c` file is an asset, embedded into the binary at compile time and loaded into context at startup under its **basename** (the part before the first dot), as if `context(name, contents)` had been called in its module.
+- `get_todos.sql` → `get_todos`; `todos.html` → `todos`; `home.md` → `home`.
+- Steps read assets by key: `mustache("todos","todos_s")`, `sqlite_query({"db","get_todos","todos_data"})`, `.migrations = {"create_todos_table"}`.
+- `context(name, value)` seeds the same way from a string literal (for small content): `context("ping","select 1");`.
+- An asset is owned by the nearest enclosing module folder (a folder with a matching `<folder>.c`). Folders without one are organizational and pass files up. Project root is the `main` module.
+
+## Templates (Mustache + MDM)
+
+Full Mustache base spec EXCEPT dot notation. Steps: `mustache(template_key, set_key)` (Mustache), `mdm(template_key, set_key)` (Markdown+Mustache), `json(template_key, set_key)` (JSON). All auto-escape (XSS-safe) except explicit unescape.
+
+- Interpolation: `{{name}}` (HTML-escaped), `{{{name}}}` or `{{&name}}` (raw).
+- Sections: `{{#name}}...{{/name}}` (truthy; iterates arrays). Inverted: `{{^name}}...{{/name}}` (falsy/empty).
+- Comments: `{{! ignored }}`. Set delimiters: `{{=<% %>=}}`.
+- Partials: `{{> name }}` inlines asset `name` against current scope.
+- Layout inheritance: `{{< parent}}{{$block}}override{{/block}}{{/parent}}`. Any asset declaring `{{$block}}default{{/block}}` blocks can be a parent (this is how shared layouts work — no special layout type).
+
+Built-in helpers (`{{helper:args}}`, colon-separated, literal or context key):
+- `{{precision:field:N}}` — format number with N decimals.
+- `{{input:field}}` — raw unvalidated request param (repopulate forms after a validation error).
+- `{{error:field}}` — section, truthy when field has an error: `{{#error:title}}...{{/error:title}}`.
+- `{{error_message:field}}` — human message for a field error.
+- `{{error_code:field}}` — HTTP status code for a field error.
+- `{{url:name}}` — resolve a resource name to its URL; `:params` are read from current scope by name. Works per-row inside a section.
+- `{{asset:filename}}` — cache-busted URL for a `public/` file.
+- `{{csrf:input}}` — hidden `<input>` with a CSRF token (for forms). `{{csrf:token}}` — bare token value (for query strings). Both set an httponly/secure/samesite cookie; state-changing requests are verified against it.
+
+## Databases
+
+Each engine is a module: `#include <engine.h>` then register with `<engine>_database(...)`. Engines: `sqlite`, `postgres`, `mysql`, `redis`, `duckdb`. They share config; only `.connect` differs.
+
+```c
+#include <sqlite.h>
+sqlite_database(
+  .name = "todos_db",                          // referenced by query steps
+  .connect = "file:{{user_id}}_todo.db?mode=rwc", // engine-specific; {{interpolation}} = multi-tenant
+  .migrations = {"create_todos_table", "create_comments_table"}, // context keys holding SQL
+  .seeds = {"seed_todos"}                       // context keys holding SQL
+);
+```
+Migrations/seeds are forward-only, index-based (run once each in array order, append new ones to the end), tracked in `nerak_meta`. Connections are pooled with LRU eviction.
+
+Other engines: `postgres_database(.connect="postgres://...")`, `mysql_database(.connect="mysql://...")`, `redis_database(.connect="redis://...")`, `duckdb_database(.connect="duckdb:analytics.db")`. Each has a matching `<engine>_query(...)`.
+
+## Resources
+
+Resource-based, not route-based. `resource("name", "/url/pattern", ...fields)`. The name is used by `{{url:name}}`, `redirect()`, `reroute()`; `:params` in patterns are filled from current scope by matching key names. Exact paths beat parameterized ones automatically (definition order irrelevant). Clients pick a verb by HTTP method or by passing `http_method` as a query/form param (lets forms reach PUT/PATCH/DELETE and gives SSE a path: `/todos?http_method=sse`).
+
+Fields:
+- `.all = {steps}` — run before every verb pipeline on the resource.
+- `.mime = m_html | m_txt | m_sse | m_json | m_js` — default response content type (default `m_html`).
+- `.get` `.post` `.put` `.patch` `.delete` — verb pipelines (ordered step arrays).
+- `.sse = {"channel:{{interp}}", ...steps}` — persistent SSE channel; first value is channel name, remaining steps run on connect.
+- `.errors` / `.repairs` — resource-scoped handlers (see Error/Repair).
+
+```c
+resource("todo", "/todos/:id",
+  .all = {input({"id", m_positive, "must be a number"})},
+  .get = {
+    sqlite_query({"todos_db", "get_todo", "todo", .must_exist = true}),
+    mustache("todo", "todo_s"),
+    respond("todo_s")
+  },
+  .patch  = { input({"title", m_not_empty, "required"}), sqlite_query({"todos_db", "update_todo"}), redirect("todo") },
+  .delete = { sqlite_query({"todos_db", "delete_todo"}), redirect("todos") },
+  .errors = {{m_not_found, {mustache("404","not_found_s"), respond("not_found_s")}}}
+);
+```
+
+## Pipeline Steps
+
+Every step accepts `.if_context` / `.unless_context` (conditionals) and `.map` / `.item` (iteration). Step argument convention: leading positional values are noted *(by order)*; the rest are named (`.field = ...`).
+
+### input — validate request params
+On success promotes `input:name` → app scope. On failure writes `error:name` and raises `m_bad_request` (400) to the nearest error/repair pipeline. All validations run before the error fires, so all field errors are available together.
+By order: `{param_key, matches, message}`. Named: `.optional` (skip if absent), `.fallback` (default when absent). `matches` is a regex string or a built-in macro. Define custom macros: `#define m_zipcode "^\\d{5}$"`.
+```c
+input(
+  {"email",  m_email,           "must be a valid email"},
+  {"title",  m_not_empty,       "cannot be empty"},
+  {"page",   m_integer,         "must be a number", .fallback = "1"},
+  {"filter", "^(active|done)$", "must be 'active' or 'done'", .optional = true}
+)
+```
+Built-in validators: `m_not_empty m_alpha m_alphanumeric m_slug m_no_html` · `m_integer m_positive m_float m_percentage` · `m_email m_uuid m_username` · `m_date m_time m_datetime` · `m_url m_ipv4 m_hex_color` · `m_zipcode_us m_phone_e164 m_cron` · `m_token m_base64` · `m_boolean m_yes_no m_on_off`.
+For non-regex checks (uniqueness, cross-field), pair with a query + `run()` calling `error_set()`.
+
+### query — `<engine>_query(...)`
+`sqlite_query`, `postgres_query`, `mysql_query`, `redis_query`, `duckdb_query`. Multiple items in one call run CONCURRENTLY. Prepared statements: interpolated `{{values}}` are bound, not spliced (SQL-injection-safe). Transactions: put `BEGIN`/`COMMIT`/`ROLLBACK` in SQL. Results are always tables (even single rows).
+By order per item: `{db_name, sql_key, set_key}`. `set_key` optional (omit for inserts without `RETURNING`). Named: `.must_exist = true` (404 if zero rows), `.if_context`/`.unless_context` (per item).
+```c
+sqlite_query(
+  {"todos_db", "get_todos", "todos_data"},
+  {"todos_db", "get_todo",  "todo", .must_exist = true},
+  {"todos_db", "get_urgent","urgent", .if_context = "show_urgent"}
+)
+sqlite_query({"todos_db", "create_todo"}) // no result captured
+```
+SQL file uses bound params: `select id, title from todos where id = {{id}};` and `insert into todos(title) values({{title}});`.
+
+### join — nest one table's records into another (in-memory)
+By order: `join(parent_key, parent_field, child_key, child_field)`. Optional `.join_field_key` (new field name on parent records; defaults to `child_key`). After it, each parent record gains a field holding its matched child records.
+```c
+// before: { blog:[{id,...}], comments:[{id,blog_id,...}] }
+join("blog", "id", "comments", "blog_id")
+// after:  { blog:[{id,..., comments:[{...}]}] }  -> template: {{#blog}}...{{#comments}}{{body}}{{/comments}}{{/blog}}
+```
+
+### fetch — outbound HTTP; JSON parses into tables/records
+Multiple items run CONCURRENTLY. By order per item: `{url, set_key, method, json_key, headers}`. Named: `.method` (`m_get` default, `m_post m_put m_patch m_delete m_sse_method`), `.headers` (array of `{name,value}`), `.json` (context key serialized as JSON body), `.text` (context key as plain-text body), `.if_context`/`.unless_context`.
+```c
+fetch(
+  {"https://api.weather.dev/now?city={{city}}", "weather"},
+  {"https://api.news.dev/headlines?topic={{topic}}", "news"}
+)
+fetch({"https://api.payments.dev/charge", "receipt", m_post, "order",
+  {{"Authorization","Bearer {{api_key}}"}, {"Idempotency-Key","{{order_id}}"}}})
+```
+
+### run / run_worker — run C logic
+`run(^(){ ... })` (inline block) or `run(.call = fn)` (named C function) for short, non-blocking logic between steps (enrich/aggregate/transform results, set flags for conditionals, call `error_set()`). `run_worker(...)` takes the same forms but offloads blocking/CPU-bound work (external libs, heavy compute, blocking I/O) to the shared thread pool, freeing the reactor; the pipeline resumes after it returns. Inside blocks/`.call` use the Imperative API.
+```c
+run(^(){
+  auto t  = get("challengers");
+  auto p0 = table_get(t, 0);
+  auto p1 = table_get(t, 1);
+  record_set(p0, "opponent_id", record_get(p1, "id"));
+  record_set(p1, "opponent_id", record_get(p0, "id"));
+})
+run(.call = assign_opponents)
+```
+
+### emit — fire an internal pub/sub event
+`emit("event_name")`. Subscribers in other modules react; no direct dependency. See Events.
+
+### run_task — run a task inline
+`run_task("task_name")`. Runs a named task inline as a step in the calling pipeline; control returns to the next step when it finishes. For reusable pipelines composed into workflows. Task must be defined with `task(...)`.
+
+### dispatch_task — enqueue a durable background job
+`dispatch_task("task_name")`. Enqueues a named task as a durable background job and returns immediately; task reactors pick it up. Checkpointed after each step, so a crash mid-task resumes where it stopped. Requires `#include <dispatch.h>`. Task must be defined with `task(...)`.
+
+### sse — push a Server-Sent Event
+With `.channel` (by order, first value, supports interpolation) broadcasts to all clients on the channel; without it, returns to the requester. Named: `.event` (event line), `.data` (array of strings, one per data line), `.comment` (comment/keep-alive line).
+```c
+sse("todos:{{user_id}}", .event = "todo_updated", .data = {"id: {{todo_id}}", "title: {{title}}"})
+```
+
+### render — mustache / mdm / json
+`mustache(template_key, set_key)`, `mdm(...)`, `json(...)`. By order: template context key, then set_key for output. (See Templates.)
+
+### respond — send the response
+By order: `respond(context_key)`. Named: `.status` (default `m_ok`; values `m_ok` 200, `m_created` 201, `m_redirect` 302, `m_bad_request` 400, `m_not_authorized` 401, `m_not_found` 404, `m_error` 500), `.mime` (override; same values as resource `.mime`).
+```c
+mustache("404","not_found_s"), respond("not_found_s", .status = m_not_found)
+```
+
+### headers / cookies — set response headers/cookies
+Array of `{name, value}`; values support interpolation.
+```c
+headers({{"X-Request-Id","{{request_id}}"}, {"Cache-Control","no-store"}}),
+cookies({{"session","{{session_id}}"}, {"theme","{{theme}}"}})
+```
+
+### redirect / reroute
+`redirect("name")` returns a 302 (browser navigates). `reroute("name")` re-enters the router server-side, running another resource's pipeline within the same request. Both take only the resource name; `:params` read from context by matching key names.
+
+### nest — group steps as one composite step
+`nest({step, step, ...}, .if_context = "flag")` — apply one condition to several steps without repeating it.
+
+## Imperative API (inside run/run_worker/.call)
+
+Context: `get(name)` → stored value (string for scalars, table for results) or `nullptr`; `set(name, value)`; `has(name)` → bool; `format(fmt)` → string with `{{interpolation}}` resolved against context.
+Memory: `allocate(bytes)` → arena buffer (auto-reclaimed on request end); `defer_free(ptr)` → schedule `free()` for a foreign/library pointer. Do not use `malloc`/`free`.
+Errors: `error_set(name, (error){code, "msg"})` (triggers nearest error/repair pipeline); `error_get(name)`; `error_has(name)`.
+Tables (ordered record collections): `table_new()`, `table_count(t)`, `table_get(t, i)` (or `nullptr`), `table_add(t, r)`, `table_remove(t, r)`, `table_remove_at(t, i)`.
+Records (name→string bags): `record_new()`, `record_get(r, name)` (or `nullptr`), `record_set(r, name, value)`, `record_remove(r, name)`.
+```c
+run(^(){
+  auto todos = get("todos");
+  for (int i = 0; i < table_count(todos); i++) {
+    auto t = table_get(todos, i);
+    auto title = record_get(t, "title");
+    if (title && strlen(title) > 40) record_set(t, "is_long", "1");
+  }
+})
+```
+
+## Conditionals
+
+`.if_context = "key"` runs the step only when the value is present; `.unless_context = "key"` only when absent. Works on any context value (validated inputs, query results, framework flags like `is_htmx`, or flags set in `run()`). For multi-state branching, set flags in `run()` and key downstream steps off them.
+```c
+mustache("fragment","frag_s", .if_context = "is_htmx"),
+respond("frag_s", .if_context = "is_htmx"),
+mustache("full_page","page_s", .unless_context = "is_htmx"),
+respond("page_s", .unless_context = "is_htmx")
+```
+
+## Iteration
+
+`.map = "table"` runs a step once per row, ALL ROWS CONCURRENTLY; the row's fields land in scope as bare `{{interpolations}}`. `.item = "key"` (pairs with `.map`) exposes the current row as a single-row table under `key` (useful for `mustache`). With a `set_key`, results collect into a table aligned with the input (one entry per row).
+```c
+fetch({"https://api.users.dev/{{id}}", "profiles", .map = "users"})        // per-row fan-out
+mustache("todo","todo_s", .map = "todos", .item = "todo_d")               // render per row, collect into todo_s
+```
+
+## Error and Repair Pipelines
+
+On failure, Nerak finds a handler by error code: resource `.errors`/`.repairs` first, then the module's `error()`/`repair()`; first match wins (resource overrides module for the same code). **Errors** are terminal (send a response, end request). **Repairs** are resumable (fix context, then resume at the step AFTER the failure). Repairs resolve first; unmatched repairs fall through to errors; unhandled errors fall through to Nerak's internal handler. The `error:` scope is shared by `input()` failures and `error_set()`; raw values stay in `input:name`.
+Built-in codes: `m_bad_request` 400, `m_not_authorized` 401, `m_not_found` 404, `m_error` 500. Any integer works; define your own: `#define err_quota_exceeded 723`.
+```c
+// resource-scoped
+.errors  = {{m_not_found, {mustache("404","nf_s"), respond("nf_s")}},
+            {m_bad_request, {mustache("form","f_s"), respond("f_s")}}},
+.repairs = {{m_not_authorized, {run(.call = refresh_session_token)}}}
+// module-scoped (inside config(name){})
+error(m_error, {mustache("5xx","e_s"), respond("e_s")});
+repair(m_not_authorized, {run(.call = refresh_session_token)});
+```
+
+## Event Pipelines (pub/sub)
+
+`#include <pubsub.h>`. Decoupled cross-module messaging. Durable: a `nerak_events` DB tracks delivery; undelivered events replay after a crash.
+- `publish("event", .with = {"key1","key2"})` — declare outbound contract (`.with` = context keys carried to subscribers).
+- `subscribe("event", { steps }, .errors=..., .repairs=...)` — subscriber pipeline (own handlers, then its module's).
+- `emit("event")` — step that fires it (carries the published keys).
+Add a subscriber = add a new module with `subscribe(...)`; the publisher does not change.
+
+## Task Pipelines
+
+A task is a named, reusable pipeline defined at module or root scope with `task("name", { pipeline }, ...)`. Registration and invocation are separate — three ways to invoke:
+- `run_task("name")` — run it INLINE as a step in the calling pipeline; control returns to the next step when it finishes. For reusable pipelines composed into workflows.
+- `dispatch_task("name")` — run it as a durable background job, returning immediately; task reactors pick it up. Requires `#include <dispatch.h>`, which provides the persistent task tables and checkpoints context after each step, so a crash mid-task resumes where it stopped.
+- `.cron = "0 8 * * *"` — run it in the background on a schedule, no caller.
+
+`task(...)` fields: `.accepts = {"keys"}` (pull caller context keys into the task), `.cron` (schedule), `.errors` / `.repairs` (own handlers, then its module's). Any pipeline or task can call `run()`, `run_worker()`, `run_task()`, and `dispatch_task()` (the last requires `dispatch.h`).
+```c
+// reusable, run inline via run_task("recount_todos"):
+task("recount_todos", { sqlite_query({"todos_db","recount"}) }, .accepts = {"user_id"});
+// durable background job via dispatch_task("notify_new_todo")  (needs #include <dispatch.h>):
+task("notify_new_todo", { fetch({"https://api.push.dev/notify", .method = m_post, .json = "{\"text\":\"New todo: {{title}}\"}"}) }, .accepts = {"title"});
+// recurring on a schedule, no caller:
+task("daily_digest", { sqlite_query({"todos_db","digest"}), emit("digest_ready") }, .cron = "0 8 * * *");
+```
+
+## Modules and Composition
+
+`config(name)` declares a module in `name/name.c`; it owns its resources, databases, migrations, tasks, event contracts, middleware, and folder assets. Compose by `#include "name/name.c"` from `main.c`.
+- `middleware(steps)` (inside `config`) — shared steps run on every request to a resource in that module (session loading, tenant resolution).
+- `error(...)` / `repair(...)` — module-scoped handlers.
+- Execution order per request: resource `.all` → module `middleware()` → verb pipeline.
+```c
+// main.c
+#include <nerak.h>
+#include "blogs/blogs.c"
+config(main){ middleware(session()); }
+// blogs/blogs.c
+#include <nerak.h>
+#include <sqlite.h>
+config(blogs){
+  sqlite_database(.name="blog_db", .connect="file:blogs.db?mode=rwc", .migrations={"create_blogs_table"});
+  resource("blog", "/blogs/:id", .get = { /* ... */ });
+}
+```
+
+## Bundled Modules
+
+### htmx — `#include <htmx.h>`
+Serves the runtime as the `{{> htmx }}` partial; sets `is_htmx` on requests with the `HX-Request` header. Return a fragment to htmx and full page to direct visits via `.if_context`/`.unless_context`. Use `hx-boost='true'` to upgrade links/forms. Put `{{> htmx }}` once in `<head>`.
+
+### datastar — `#include <datastar.h>`
+Serves `{{> datastar }}` partial; `datastar_sse()` pushes reactive patches over an SSE channel (page opens a resource `.sse` channel; pipelines push patches). First value (by order) = channel (interpolation ok). Named:
+- `.target` — CSS selector to patch (interpolation ok).
+- `.mode` — `mode_outer mode_inner mode_replace mode_prepend mode_append mode_before mode_after mode_remove`.
+- `.elements` — context key with the rendered HTML fragment (not needed for `mode_remove`).
+- `.signals` — context key with signal state to merge into the client store.
+- `.js` — JavaScript to run on the client.
+```c
+resource("todos", "/todos",
+  .sse  = {"todos:{{user_id}}"},                  // each browser listens here
+  .post = {
+    input({"title", m_not_empty}),
+    sqlite_query({"todos_db","insert_todo","todo", .must_exist = true}), // RETURNING row
+    mustache("todo_row","todo_row_s"),
+    datastar_sse("todos:{{user_id}}", .target = "#todo-list", .mode = mode_append, .elements = "todo_row_s")
+  }
+);
+datastar_sse("todos:{{user_id}}", .target = "#todo-{{id}}", .mode = mode_remove)
+```
+
+### tailwind — `#include <tailwind.h>`
+Compiles the Tailwind classes used in templates and serves the stylesheet as `{{> tailwind }}` (put once in `<head>`). Use classes directly; no build/config.
+
+### daisyui — `#include <daisyui.h>`
+Compiles the DaisyUI classes used in templates and serves the stylesheet as `{{> daisyui }}` (put once in `<head>`). Use classes directly; no build/config.
+
+### session_auth — `#include <session_auth.h>`
+Cookie-based auth as steps. `session()` loads the current `user` record into context (run as `middleware()` in modules whose pipelines need it). `logged_in()` guards a resource (in `.all`), redirecting anonymous visitors to login. `login()` / `logout()` / `signup()` are verb-pipeline actions. The login page asset is named `login`. Templates read `{{#user}}{{short_name}}{{/user}}`.
+```c
+config(todos){
+  middleware(logged_in(), session());
+  resource("todos", "/todos", .get = { mustache("todos","todos_s"), respond("todos_s") });
+}
+resource("login",  "/login",  .get = {mustache("login","l_s"), respond("l_s")}, .post = {login()});
+resource("logout", "/logout", .post = {logout()});
+```
+
+### Database engines
+`sqlite postgres mysql redis duckdb`. Each: `#include <engine.h>`, `<engine>_database(...)`, `<engine>_query({...})`. Shared config; only `.connect` is engine-specific.
+
+## Static Files & External Dependencies
+
+- `public/` files are served directly; reference with `{{asset:filename}}` (content-checksummed, cache-busted, immutable cache headers). Distinct from SQL/HTML assets (which are embedded and read by context key).
+- Third-party C source: drop into `vendor/`; Nerak compiles and links it. Call from `run()`/`run_worker()`. Register library-owned pointers with `defer_free()`. For non-source deps (system packages/build tooling), provide a custom `Dockerfile`.
+
+## Safety Guarantees (handled by the framework — do not reimplement)
+
+- Memory: per-request arena allocators; no `malloc`/`free` in app code (use `allocate()`/`defer_free()`). All framework structures bounds-checked; OOB reads / missing keys return `nullptr` rather than faulting. Pipeline memory cap (default 5MB) aborts with 500.
+- SQL injection: `{{interpolation}}` in query SQL is bound as prepared-statement parameters.
+- XSS: `mustache()`/`mdm()` auto-escape; raw HTML requires explicit `{{{field}}}`/`{{&field}}`.
+- CSRF: state-changing requests verified against a per-session token; emit via `{{csrf:input}}` / `{{csrf:token}}`.
+
+## Project Layout & Run
+
+```
+.
+├── main.c          # config(main){ ... } composes modules
+├── home.html       # → main module (often the shared layout)
+├── public/         # static files served directly
+│   └── favicon.png
+└── todos/          # a module (folder + matching .c)
+    ├── todos.c     # config(todos){ ... }
+    ├── todos.html
+    ├── create_todos_table.sql
+    └── get_todos.sql
+```
+Everything runs in Docker (dev server :3000, telemetry :4000) with file watching, auto-compilation, hot code reloading, and HMR:
+```bash
+mkdir myapp && cd myapp
+wget https://docker.nightshadecoder.dev/nerak/compose.yml
+docker compose up
+```
+
+## End-to-End Example (CRUD with validation, error repair, modules, events)
+
+```c
+// todos/create_todos_table.sql:  CREATE TABLE todos(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL);
+// todos/get_todos.sql:           select id, title from todos;
+// todos/create_todo.sql:         insert into todos(title) values({{title}});
+// todos/get_todo.sql:            select id, title from todos where id = {{id}};
+
+// todos/todos.html:
+//   {{< home}}{{$body}}
+//     <h1>My Todos</h1>
+//     <form method='post' action='{{url:todos}}'>{{csrf:input}}
+//       <input name='title' value='{{input:title}}'>{{#error:title}}<span>{{error_message:title}}</span>{{/error:title}}
+//       <button>Add</button>
+//     </form>
+//     <ul>{{#todos_data}}<li><a href='{{url:todo}}'>{{title}}</a></li>{{/todos_data}}</ul>
+//   {{/body}}{{/home}}
+
+// todos.c
+#include <nerak.h>
+#include <sqlite.h>
+#include <pubsub.h>
+
+config(todos){
+  sqlite_database(.name="todos_db", .connect="file:todos.db?mode=rwc",
+                  .migrations={"create_todos_table"});
+  publish("todo_created", .with = {"title"});
+
+  resource("todos", "/todos",
+    .get = {
+      sqlite_query({"todos_db", "get_todos", "todos_data"}),
+      mustache("todos", "todos_s"),
+      respond("todos_s")
+    },
+    .post = {
+      input({"title", m_not_empty, "title is required"}),
+      sqlite_query({"todos_db", "create_todo"}),
+      emit("todo_created"),
+      redirect("todos")               // POST-redirect-GET
+    },
+    .errors = {{m_bad_request, {reroute("todos")}}} // re-render the GET; form repopulates from input:/error:
+  );
+
+  resource("todo", "/todos/:id",
+    .all = {input({"id", m_integer})},
+    .get = {
+      sqlite_query({"todos_db", "get_todo", "todo_data", .must_exist = true}),
+      mustache("todo", "todo_s"),
+      respond("todo_s")
+    }
+  );
+}
+
+// main.c
+#include <nerak.h>
+#include "todos/todos.c"
+config(main){
+  resource("home","/",
+    .get = {
+      mustache("home","home_s"),
+      respond("home_s")
+    }
+  );
+}
+```

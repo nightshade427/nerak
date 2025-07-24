@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 580" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#f59e0b"/>
+    </marker>
+    <marker id="arrow-emerald" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#10b981"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="920" height="580" rx="12" fill="#0f172a"/>
+
+  <!-- Title -->
+  <text x="460" y="38" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="600">Multi-Reactor Architecture</text>
+
+  <!-- Subtitle -->
+  <text x="460" y="58" text-anchor="middle" fill="#475569" font-size="10">request/task/cpu ratio configurable in compose.yml</text>
+
+  <!-- HTTP Clients -->
+  <rect x="20" y="105" width="110" height="44" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="75" y="132" text-anchor="middle" fill="#94a3b8" font-size="13" font-weight="500">HTTP Clients</text>
+
+  <!-- Arrows from clients to request reactors -->
+  <line x1="130" y1="117" x2="178" y2="117" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="130" y1="127" x2="178" y2="185" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="130" y1="137" x2="178" y2="255" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ==================== REQUEST REACTORS ==================== -->
+  <rect x="173" y="76" width="270" height="228" rx="10" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="308" y="96" text-anchor="middle" fill="#60a5fa" font-size="12" font-weight="600" letter-spacing="0.5">REQUEST REACTORS</text>
+
+  <!-- Request Reactor 0 -->
+  <rect x="188" y="106" width="240" height="40" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="203" y="131" fill="#93c5fd" font-size="11" font-weight="600">Core 0</text>
+  <text x="260" y="131" fill="#cbd5e1" font-size="11">event loop</text>
+  <rect x="348" y="114" width="72" height="24" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="384" y="131" text-anchor="middle" fill="#94a3b8" font-size="10">pipeline</text>
+
+  <!-- Request Reactor 1 -->
+  <rect x="188" y="158" width="240" height="40" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="203" y="183" fill="#93c5fd" font-size="11" font-weight="600">Core 1</text>
+  <text x="260" y="183" fill="#cbd5e1" font-size="11">event loop</text>
+  <rect x="348" y="166" width="72" height="24" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="384" y="183" text-anchor="middle" fill="#94a3b8" font-size="10">pipeline</text>
+
+  <!-- Ellipsis -->
+  <circle cx="308" cy="212" r="2" fill="#475569"/>
+  <circle cx="308" cy="222" r="2" fill="#475569"/>
+
+  <!-- Request Reactor N -->
+  <rect x="188" y="240" width="240" height="40" rx="8" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="203" y="265" fill="#93c5fd" font-size="11" font-weight="600">Core N</text>
+  <text x="260" y="265" fill="#cbd5e1" font-size="11">event loop</text>
+  <rect x="348" y="248" width="72" height="24" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="384" y="265" text-anchor="middle" fill="#94a3b8" font-size="10">pipeline</text>
+
+  <!-- ==================== TASK REACTORS ==================== -->
+  <rect x="173" y="330" width="270" height="228" rx="10" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="308" y="350" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="600" letter-spacing="0.5">TASK REACTORS</text>
+
+  <!-- Task Reactor 0 -->
+  <rect x="188" y="360" width="240" height="40" rx="8" fill="#422006" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="203" y="385" fill="#fcd34d" font-size="11" font-weight="600">Core</text>
+  <text x="236" y="385" fill="#cbd5e1" font-size="11">event loop</text>
+  <rect x="348" y="368" width="72" height="24" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="384" y="385" text-anchor="middle" fill="#94a3b8" font-size="10">cron / jobs</text>
+
+  <!-- Task Reactor 1 -->
+  <rect x="188" y="412" width="240" height="40" rx="8" fill="#422006" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="203" y="437" fill="#fcd34d" font-size="11" font-weight="600">Core</text>
+  <text x="236" y="437" fill="#cbd5e1" font-size="11">event loop</text>
+  <rect x="348" y="420" width="72" height="24" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="384" y="437" text-anchor="middle" fill="#94a3b8" font-size="10">cron / jobs</text>
+
+  <!-- Ellipsis -->
+  <circle cx="308" cy="466" r="2" fill="#475569"/>
+  <circle cx="308" cy="476" r="2" fill="#475569"/>
+
+  <!-- Task Reactor N -->
+  <rect x="188" y="494" width="240" height="40" rx="8" fill="#422006" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="203" y="519" fill="#fcd34d" font-size="11" font-weight="600">Core</text>
+  <text x="236" y="519" fill="#cbd5e1" font-size="11">event loop</text>
+  <rect x="348" y="502" width="72" height="24" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="384" y="519" text-anchor="middle" fill="#94a3b8" font-size="10">cron / jobs</text>
+
+  <!-- Task DB -->
+  <rect x="20" y="410" width="110" height="44" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="75" y="429" text-anchor="middle" fill="#fcd34d" font-size="11" font-weight="600">nerak_tasks</text>
+  <text x="75" y="444" text-anchor="middle" fill="#94a3b8" font-size="10">database</text>
+
+  <!-- Arrows: task DB to/from task reactors -->
+  <line x1="130" y1="425" x2="183" y2="425" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+  <line x1="183" y1="437" x2="130" y2="437" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+
+  <!-- ==================== SHARED THREAD POOL ==================== -->
+  <rect x="540" y="76" width="350" height="270" rx="10" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="715" y="100" text-anchor="middle" fill="#34d399" font-size="12" font-weight="600" letter-spacing="0.5">SHARED THREAD POOL</text>
+  <text x="715" y="116" text-anchor="middle" fill="#6b7280" font-size="10">remaining cores</text>
+
+  <!-- Work queue label -->
+  <text x="715" y="140" text-anchor="middle" fill="#94a3b8" font-size="10">work queue</text>
+
+  <!-- Queue visualization -->
+  <rect x="568" y="148" width="294" height="36" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <rect x="576" y="154" width="24" height="24" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <rect x="606" y="154" width="24" height="24" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <rect x="636" y="154" width="24" height="24" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <rect x="666" y="154" width="24" height="24" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <rect x="696" y="154" width="24" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="3,2"/>
+  <rect x="726" y="154" width="24" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="3,2"/>
+  <rect x="756" y="154" width="24" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="3,2"/>
+  <rect x="786" y="154" width="24" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="3,2"/>
+  <rect x="816" y="154" width="24" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- Arrows from queue down to threads -->
+  <line x1="630" y1="184" x2="630" y2="214" stroke="#475569" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="720" y1="184" x2="720" y2="214" stroke="#475569" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="810" y1="184" x2="810" y2="214" stroke="#475569" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Thread boxes -->
+  <rect x="570" y="218" width="110" height="48" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+  <text x="625" y="247" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="500">Thread 1</text>
+
+  <rect x="690" y="218" width="60" height="48" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+  <text x="720" y="247" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="500">...</text>
+
+  <rect x="760" y="218" width="110" height="48" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+  <text x="815" y="247" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="500">Thread N</text>
+
+  <!-- Result return -->
+  <text x="715" y="298" text-anchor="middle" fill="#6b7280" font-size="10">on complete, resumes pipeline on reactor</text>
+
+  <!-- ==================== INVOKE ARROWS ==================== -->
+  <!-- Arrow from request reactors to pool -->
+  <path d="M 443,185 L 535,168" fill="none" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-emerald)" stroke-dasharray="5,3"/>
+  <text x="476" y="164" fill="#34d399" font-size="10" font-weight="500">invoke()</text>
+
+  <!-- Arrow from task reactors to pool -->
+  <path d="M 443,430 Q 510,390 535,310" fill="none" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-emerald)" stroke-dasharray="5,3"/>
+  <text x="518" y="390" fill="#34d399" font-size="10" font-weight="500">invoke()</text>
+
+  <!-- ==================== TASK ARROWS ==================== -->
+  <!-- task() from request reactors to task DB -->
+  <path d="M 188,286 Q 110,320 85,405" fill="none" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)" stroke-dasharray="5,3"/>
+  <text x="108" y="330" fill="#fbbf24" font-size="10" font-weight="500">task()</text>
+
+  <!-- task() from task reactors to task DB (self-enqueue) -->
+  <path d="M 188,540 Q 130,556 85,458" fill="none" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-amber)" stroke-dasharray="5,3"/>
+  <text x="120" y="540" fill="#fbbf24" font-size="10" font-weight="500">task()</text>
+
+</svg>
